@@ -1,0 +1,160 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>🍽️ Menu</h1>
+      <p class="subtitle">Manage your restaurant's menu items</p>
+    </div>
+    <button class="btn btn-primary" (click)="showAddForm.set(true)">+ Add Item</button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-row">
+    <input class="search-input" type="text" placeholder="🔍 Search menu..."
+      [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
+    <div class="avail-filter">
+      @for (opt of availOptions; track opt) {
+        <button class="avail-btn" [class.active]="filterAvail() === opt"
+          (click)="setFilterAvail(opt)">
+          {{ opt | titlecase }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Category Tabs -->
+  <div class="cat-tabs">
+    @for (cat of categories; track cat) {
+      <button class="cat-tab" [class.active]="filterCat() === cat"
+        (click)="filterCat.set(cat)">
+        <span>{{ categoryIcons[cat] }}</span>
+        <span>{{ cat | titlecase }}</span>
+        <span class="cat-count">{{ rs.menuItems() | menuCategoryCount:cat }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- Menu by Category -->
+  @if (filteredMenu().length === 0) {
+    <div class="empty-state">
+      <span>🍽️</span>
+      <p>No items found</p>
+    </div>
+  }
+
+  @for (catKey of categoryKeys(); track catKey) {
+    <div class="menu-section">
+      <h2 class="section-title">
+        {{ categoryIcons[catKey] }} {{ catKey | titlecase }}
+        <span class="section-count">{{ groupedByCategory()[catKey].length }} items</span>
+      </h2>
+      <div class="menu-grid">
+        @for (item of groupedByCategory()[catKey]; track item.id) {
+          <div class="menu-card" [class.unavailable]="!item.available">
+            <div class="menu-card-top">
+              <div class="item-emoji">{{ item.image }}</div>
+              <div class="item-badge-row">
+                @for (tag of item.tags.slice(0,2); track tag) {
+                  <span class="item-tag">{{ tag }}</span>
+                }
+              </div>
+              <button class="toggle-avail" (click)="rs.toggleMenuItemAvailability(item.id)"
+                [title]="item.available ? 'Mark unavailable' : 'Mark available'">
+                {{ item.available ? '✅' : '⛔' }}
+              </button>
+            </div>
+            <div class="menu-card-body">
+              <h3 class="item-name">{{ item.name }}</h3>
+              <p class="item-desc">{{ item.description }}</p>
+              <div class="item-meta-row">
+                <span class="item-price">₹{{ item.price }}</span>
+                <span class="item-prep">⏱ {{ item.preparationTime }}m</span>
+                @if (item.calories) { <span class="item-cal">🔥 {{ item.calories }} kcal</span> }
+              </div>
+              <div class="item-rating">
+                <span class="stars">
+                  @for (star of starArray(item.rating); track $index) {
+                    <span [class.filled]="star">★</span>
+                  }
+                </span>
+                <span class="rating-num">{{ item.rating }}</span>
+                <span class="review-count">({{ item.reviewCount }})</span>
+              </div>
+            </div>
+            @if (!item.available) {
+              <div class="unavail-overlay">UNAVAILABLE</div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Add Item Modal -->
+@if (showAddForm()) {
+  <div class="modal-overlay" (click)="showAddForm.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>+ Add Menu Item</h2>
+        <button class="modal-close" (click)="showAddForm.set(false)">✕</button>
+      </div>
+      <form class="add-form" (submit)="$event.preventDefault(); submitNew()">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" placeholder="Item name" [value]="newItem().name"
+              (input)="patchNew('name', $any($event.target).value)" required />
+          </div>
+          <div class="form-group">
+            <label>Price (₹) *</label>
+            <input type="number" min="0" [value]="newItem().price"
+              (input)="patchNew('price', $any($event.target).value)" required />
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Description</label>
+          <textarea rows="2" placeholder="Brief description..." [value]="newItem().description"
+            (input)="patchNew('description', $any($event.target).value)"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category</label>
+            <select [value]="newItem().category"
+              (change)="patchNew('category', $any($event.target).value)">
+              @for (cat of ['appetizer','main','dessert','beverage','special']; track cat) {
+                <option [value]="cat">{{ cat | titlecase }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Emoji Icon</label>
+            <input type="text" placeholder="🍽️" [value]="newItem().image"
+              (input)="patchNew('image', $any($event.target).value)" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prep Time (min)</label>
+            <input type="number" min="1" [value]="newItem().preparationTime"
+              (input)="patchNew('preparationTime', $any($event.target).value)" />
+          </div>
+          <div class="form-group">
+            <label>Calories (kcal)</label>
+            <input type="number" min="0" [value]="newItem().calories"
+              (input)="patchNew('calories', $any($event.target).value)" />
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Tags (comma-separated)</label>
+          <input type="text" placeholder="vegetarian, spicy, popular" [value]="newItem().tags"
+            (input)="patchNew('tags', $any($event.target).value)" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" (click)="showAddForm.set(false)">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add to Menu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+

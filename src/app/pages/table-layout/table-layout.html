@@ -1,0 +1,113 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>🪑 Table Layout</h1>
+      <p class="subtitle">Interactive floor plan — click a table to manage it</p>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    @for (s of statuses; track s) {
+      <div class="legend-item">
+        <span class="legend-dot" [ngClass]="s"></span>
+        <span>{{ statusLabel[s] }}</span>
+        <span class="legend-count">
+          ({{ rs.tables() | tableCount:s }})
+        </span>
+      </div>
+    }
+  </div>
+
+  <!-- Section Tabs -->
+  <div class="section-tabs">
+    @for (sec of sections(); track sec) {
+      <button class="sec-tab" [class.active]="selectedSection() === sec"
+        (click)="selectedSection.set(sec)">
+        {{ sec }}
+      </button>
+    }
+  </div>
+
+  <!-- Floor Plan -->
+  <div class="floor-grid">
+    @for (t of displayedTables(); track t.id) {
+      <div class="table-card" [ngClass]="t.status"
+           [class.selected]="selectedTable()?.id === t.id"
+           [class.shape-round]="t.shape === 'round'"
+           [class.shape-rect]="t.shape === 'rectangular'"
+           (click)="selectTable(t)">
+        <div class="table-number">{{ t.number }}</div>
+        <div class="table-shape-icon">
+          @if (t.shape === 'round') { 🔵 }
+          @else if (t.shape === 'square') { 🟦 }
+          @else { 🟩 }
+        </div>
+        <div class="table-cap">👥 {{ t.capacity }}</div>
+        <div class="table-section">{{ t.section }}</div>
+      </div>
+    }
+  </div>
+
+  <!-- Detail Panel -->
+  @if (selectedTable()) {
+    <div class="detail-panel">
+      <div class="detail-header">
+        <h3>Table {{ selectedTable()!.number }} — {{ selectedTable()!.section }}</h3>
+        <button class="close-btn" (click)="selectedTable.set(null)">✕</button>
+      </div>
+      <div class="detail-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="d-label">Capacity</span>
+            <span class="d-value">{{ selectedTable()!.capacity }} guests</span>
+          </div>
+          <div class="detail-item">
+            <span class="d-label">Shape</span>
+            <span class="d-value" style="text-transform:capitalize">{{ selectedTable()!.shape }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="d-label">Current Status</span>
+            <span class="status-badge" [ngClass]="selectedTable()!.status">
+              {{ statusLabel[selectedTable()!.status] }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Linked Reservation -->
+        @if (getTableReservation(selectedTable()!.id); as res) {
+          <div class="linked-block">
+            <h4>📅 Current Reservation</h4>
+            <p><b>{{ res.customerName }}</b> · Party of {{ res.partySize }}</p>
+            <p>{{ res.date }} at {{ res.time }} · Status: <b>{{ res.status }}</b></p>
+          </div>
+        }
+
+        <!-- Linked Order -->
+        @if (getTableOrder(selectedTable()!.id); as order) {
+          <div class="linked-block order">
+            <h4>🧾 Active Order</h4>
+            <p>{{ order.items.length }} item(s) · Total: <b>₹{{ order.total | number:'1.2-2' }}</b></p>
+            <p>Status: <b>{{ order.status }}</b></p>
+          </div>
+        }
+
+        <!-- Status Actions -->
+        <div class="status-actions">
+          <h4>Change Status</h4>
+          <div class="status-btns">
+            @for (s of statuses; track s) {
+              <button class="status-btn" [ngClass]="s"
+                [class.current]="selectedTable()!.status === s"
+                (click)="changeStatus(selectedTable()!.id, s)"
+                [disabled]="selectedTable()!.status === s">
+                {{ statusLabel[s] }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+

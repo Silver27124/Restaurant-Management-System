@@ -1,0 +1,31 @@
+<nav class="navbar">
+  <div class="navbar-brand">
+    <span class="brand-icon">🍴</span>
+    <span class="brand-name">Saveur</span>
+    <span class="brand-tag">Restaurant</span>
+  </div>
+
+  <ul class="nav-links" [class.mobile-open]="mobileOpen()">
+    @for (link of navLinks; track link.path) {
+      <li>
+        <a [routerLink]="link.path"
+           routerLinkActive="active"
+           (click)="closeMobile()">
+          <span class="nav-icon">{{ link.icon }}</span>
+          <span class="nav-label">{{ link.label }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+
+  <div class="navbar-right">
+    <div class="nav-badge">
+      <span class="badge-dot" [class.pulse]="rs.activeOrders().length > 0"></span>
+      <span>{{ rs.activeOrders().length }} Active</span>
+    </div>
+    <button class="hamburger" (click)="toggleMobile()" [attr.aria-expanded]="mobileOpen()">
+      @if (mobileOpen()) { ✕ } @else { ☰ }
+    </button>
+  </div>
+</nav>
+

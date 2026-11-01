@@ -1,0 +1,120 @@
+<div class="dashboard">
+  <div class="page-header">
+    <div>
+      <h1>Dashboard <span class="emoji">📊</span></h1>
+      <p class="subtitle">Welcome back! Here's what's happening today.</p>
+    </div>
+    <div class="header-actions">
+      <a routerLink="/reservations" class="btn btn-primary">+ New Reservation</a>
+      <a routerLink="/orders" class="btn btn-outline">+ New Order</a>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stat-grid">
+    @for (card of statCards(); track card.label) {
+      <div class="stat-card" [ngClass]="card.color">
+        <div class="stat-icon">{{ card.icon }}</div>
+        <div class="stat-body">
+          <div class="stat-value">{{ card.value }}</div>
+          <div class="stat-label">{{ card.label }}</div>
+          <div class="stat-sub">{{ card.sub }}</div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Main Grid -->
+  <div class="dashboard-grid">
+
+    <!-- Table Status -->
+    <div class="card">
+      <div class="card-header">
+        <h3>🪑 Table Status</h3>
+        <a routerLink="/tables" class="card-link">View Layout →</a>
+      </div>
+      <div class="table-status-grid">
+        @for (g of tableStatusGroups(); track g.label) {
+          <div class="status-block" [style.border-color]="g.color">
+            <span class="s-icon">{{ g.icon }}</span>
+            <span class="s-count" [style.color]="g.color">{{ g.count }}</span>
+            <span class="s-label">{{ g.label }}</span>
+          </div>
+        }
+      </div>
+      <!-- Mini table grid -->
+      <div class="mini-tables">
+        @for (t of rs.tables(); track t.id) {
+          <div class="mini-table" [ngClass]="t.status" [title]="'Table ' + t.number + ' - ' + t.status">
+            {{ t.number }}
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Today's Reservations -->
+    <div class="card">
+      <div class="card-header">
+        <h3>📅 Today's Reservations</h3>
+        <a routerLink="/reservations" class="card-link">View All →</a>
+      </div>
+      @if (recentReservations().length === 0) {
+        <div class="empty-state">No reservations for today</div>
+      }
+      @for (r of recentReservations(); track r.id) {
+        <div class="reservation-row">
+          <div class="r-avatar">{{ r.customerName[0] }}</div>
+          <div class="r-info">
+            <div class="r-name">{{ r.customerName }}</div>
+            <div class="r-meta">{{ r.time }} · Party of {{ r.partySize }}</div>
+          </div>
+          <div class="r-status" [style.background]="statusColor(r.status)">{{ r.status }}</div>
+        </div>
+      }
+    </div>
+
+    <!-- Active Orders -->
+    <div class="card">
+      <div class="card-header">
+        <h3>🧾 Active Orders</h3>
+        <a routerLink="/orders" class="card-link">View All →</a>
+      </div>
+      @if (pendingOrders().length === 0) {
+        <div class="empty-state">No active orders</div>
+      }
+      @for (o of pendingOrders(); track o.id) {
+        <div class="order-row">
+          <div class="order-table">T{{ o.tableNumber }}</div>
+          <div class="order-info">
+            <div class="order-items">{{ o.items.length }} item(s)</div>
+            <div class="order-time">{{ getTimeSince(o.createdAt) }}</div>
+          </div>
+          <div class="order-total">₹{{ o.total | number:'1.0-0' }}</div>
+          <div class="o-status" [style.background]="orderStatusColor(o.status)">{{ o.status }}</div>
+        </div>
+      }
+    </div>
+
+    <!-- Staff on Duty -->
+    <div class="card">
+      <div class="card-header">
+        <h3>👥 Staff on Duty</h3>
+        <a routerLink="/staff" class="card-link">Manage →</a>
+      </div>
+      <div class="staff-list">
+        @for (s of staffOnDuty(); track s.id) {
+          <div class="staff-chip">
+            <span class="staff-avatar">{{ s.avatar }}</span>
+            <div class="staff-info">
+              <div class="staff-name">{{ s.name }}</div>
+              <div class="staff-role">{{ s.role }}</div>
+            </div>
+            <span class="on-duty-dot"></span>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
+</div>
+

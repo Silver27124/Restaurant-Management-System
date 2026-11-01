@@ -1,0 +1,194 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>🧾 Orders</h1>
+      <p class="subtitle">Track and manage all table orders</p>
+    </div>
+    <button class="btn btn-primary" (click)="showNewOrder.set(true)">+ New Order</button>
+  </div>
+
+  <!-- Status Filter -->
+  <div class="status-tabs">
+    @for (s of statusOptions; track s) {
+      <button class="status-tab" [class.active]="filterStatus() === s"
+        (click)="setFilterStatus(s)">
+        {{ s === 'all' ? 'All Orders' : s | titlecase }}
+        @if (s !== 'all') {
+          <span class="tab-count">
+            {{ rs.orders() | orderCount:s }}
+          </span>
+        }
+      </button>
+    }
+  </div>
+
+  <!-- Orders Grid -->
+  <div class="orders-grid">
+    @if (filteredOrders().length === 0) {
+      <div class="empty-state">
+        <span>📭</span>
+        <p>No orders found</p>
+      </div>
+    }
+    @for (o of filteredOrders(); track o.id) {
+      <div class="order-card" [class.paid]="o.paid">
+        <div class="order-card-header" [style.background]="orderColor(o.status)">
+          <span class="oc-table">Table {{ o.tableNumber }}</span>
+          <span class="oc-status">{{ o.status | titlecase }}</span>
+          @if (o.paid) { <span class="paid-badge">✅ Paid</span> }
+        </div>
+        <div class="order-card-body">
+          <div class="order-items-list">
+            @for (item of o.items; track item.menuItemId) {
+              <div class="oi-row">
+                <span class="oi-name">{{ item.menuItemName }}</span>
+                <span class="oi-qty">×{{ item.quantity }}</span>
+                <span class="oi-price">₹{{ item.quantity * item.unitPrice | number:'1.0-0' }}</span>
+              </div>
+            }
+          </div>
+          <div class="order-totals">
+            <div class="ot-row"><span>Subtotal</span><span>₹{{ o.subtotal | number:'1.2-2' }}</span></div>
+            <div class="ot-row"><span>GST (18%)</span><span>₹{{ o.tax | number:'1.2-2' }}</span></div>
+            <div class="ot-row total"><span>Total</span><span>₹{{ o.total | number:'1.2-2' }}</span></div>
+          </div>
+          <div class="order-meta">
+            <span>🕐 {{ getTimeSince(o.createdAt) }}</span>
+            @if (o.servedBy) { <span>👤 {{ o.servedBy }}</span> }
+            @if (o.paymentMethod) { <span>💳 {{ o.paymentMethod | titlecase }}</span> }
+          </div>
+          @if (!o.paid && o.status !== 'cancelled') {
+            <div class="order-actions">
+              @if (nextStatus(o.status)) {
+                <button class="btn-advance" (click)="advanceOrder(o.id, o.status)">
+                  → {{ nextStatus(o.status) | titlecase }}
+                </button>
+              }
+              @if (o.status === 'served') {
+                <button class="btn-settle" (click)="payingOrderId.set(o.id)">
+                  💳 Settle Bill
+                </button>
+              }
+              <button class="btn-cancel" (click)="cancelOrder(o.id)">Cancel</button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- New Order Modal -->
+@if (showNewOrder()) {
+  <div class="modal-overlay" (click)="showNewOrder.set(false)">
+    <div class="modal large-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🧾 New Order</h2>
+        <button class="modal-close" (click)="showNewOrder.set(false)">✕</button>
+      </div>
+      <div class="new-order-layout">
+        <!-- Menu Panel -->
+        <div class="menu-panel">
+          <h3>Select Items</h3>
+          @for (cat of ['appetizer','main','dessert','beverage','special']; track cat) {
+            <div class="menu-category">
+              <h4>{{ cat | titlecase }}</h4>
+              @for (item of rs.menuItems() | menuFilter:cat; track item.id) {
+                <div class="menu-item-row" [class.unavailable]="!item.available"
+                     (click)="addItemToOrder(item.id)">
+                  <span class="mi-icon">{{ item.image }}</span>
+                  <div class="mi-info">
+                    <div class="mi-name">{{ item.name }}</div>
+                    <div class="mi-price">₹{{ item.price }}</div>
+                  </div>
+                  @if (getItemQty(item.id) > 0) {
+                    <span class="mi-qty">{{ getItemQty(item.id) }}</span>
+                  }
+                  @if (!item.available) { <span class="unavail-badge">Unavailable</span> }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Order Summary -->
+        <div class="order-summary-panel">
+          <h3>Order Summary</h3>
+          <div class="form-group">
+            <label>Table *</label>
+            <select [value]="selectedTableId()"
+              (change)="selectedTableId.set($any($event.target).value)">
+              <option value="">Select Table</option>
+              @for (t of availableTables(); track t.id) {
+                <option [value]="t.id">Table {{ t.number }} ({{ t.section }})</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Served By</label>
+            <input type="text" placeholder="Staff name" [value]="servedBy()"
+              (input)="servedBy.set($any($event.target).value)" />
+          </div>
+
+          @if (selectedItems().length === 0) {
+            <div class="empty-order">Click items on the left to add them</div>
+          }
+          @for (item of selectedItems(); track item.menuItemId) {
+            <div class="summary-item">
+              <div class="si-name">{{ item.menuItemName }}</div>
+              <div class="si-controls">
+                <button class="qty-btn" (click)="removeItemFromOrder(item.menuItemId)">−</button>
+                <span class="si-qty">{{ item.quantity }}</span>
+                <button class="qty-btn" (click)="addItemToOrder(item.menuItemId)">+</button>
+              </div>
+              <div class="si-total">₹{{ item.quantity * item.unitPrice | number:'1.0-0' }}</div>
+            </div>
+          }
+
+          @if (selectedItems().length > 0) {
+            <div class="order-total-block">
+              <div class="ot-row"><span>Subtotal</span><span>₹{{ selectedItems() | orderSubtotal }}</span></div>
+              <div class="ot-row total"><span>Total (incl. 18% GST)</span>
+                <span>₹{{ getOrderTotal(selectedItems()) | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          }
+
+          <div class="form-actions" style="margin-top:1rem">
+            <button class="btn btn-outline" (click)="showNewOrder.set(false)">Cancel</button>
+            <button class="btn btn-primary" (click)="submitOrder()">Place Order</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Payment Modal -->
+@if (payingOrderId()) {
+  <div class="modal-overlay" (click)="payingOrderId.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>💳 Settle Payment</h2>
+        <button class="modal-close" (click)="payingOrderId.set(null)">✕</button>
+      </div>
+      <div class="payment-body">
+        <p>Select payment method:</p>
+        <div class="payment-methods">
+          @for (pm of paymentMethods; track pm) {
+            <button class="pay-method" [class.selected]="paymentMethod() === pm"
+              (click)="setPaymentMethod(pm)">
+              {{ pm === 'cash' ? '💵' : pm === 'card' ? '💳' : pm === 'upi' ? '📲' : '👜' }}
+              {{ pm | titlecase }}
+            </button>
+          }
+        </div>
+        <div class="form-actions" style="margin-top:1.5rem">
+          <button class="btn btn-outline" (click)="payingOrderId.set(null)">Cancel</button>
+          <button class="btn btn-primary" (click)="settlePayment()">Confirm Payment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
